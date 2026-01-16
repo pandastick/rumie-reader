@@ -633,9 +633,11 @@
         // n8n webhook URL - fetches data from Airtable (PRODUCTION URL)
         const N8N_WEBHOOK_URL = 'https://rumurumurumu.app.n8n.cloud/webhook/8ef6128e-fc03-49ac-8b22-eb8a722157b0';
 
-        // Use CORS proxy to bypass CORS restrictions since n8n doesn't handle OPTIONS requests
-        const CORS_PROXY = 'https://corsproxy.io/?';
-        const PROXIED_URL = CORS_PROXY + encodeURIComponent(N8N_WEBHOOK_URL);
+        // Use Netlify serverless function as CORS proxy (configured in netlify.toml)
+        // On Netlify: uses /api/proxy -> /.netlify/functions/proxy
+        // Locally: falls back to direct URL (may need CORS proxy for local dev)
+        const isNetlify = window.location.hostname.includes('netlify') || !window.location.hostname.includes('localhost');
+        const PROXY_URL = isNetlify ? '/api/proxy' : N8N_WEBHOOK_URL;
 
         let allData = [];
         let currentFilter = 'recent'; // 'recent' or 'all'
@@ -680,18 +682,15 @@
 
         async function loadData() {
             try {
-                console.log('Attempting to fetch from:', N8N_WEBHOOK_URL);
-                console.log('Using CORS proxy:', PROXIED_URL);
+                console.log('Fetching via:', PROXY_URL);
                 countElem.textContent = 'Fetching data...';
 
-                // Use GET request through CORS proxy
-                const response = await fetch(PROXIED_URL, {
+                // Use GET request through Netlify proxy
+                const response = await fetch(PROXY_URL, {
                     method: 'GET'
                 });
 
-                console.log('Response received:', response);
                 console.log('Response status:', response.status);
-                console.log('Response ok?', response.ok);
 
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);
