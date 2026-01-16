@@ -15,7 +15,7 @@ const API_ENDPOINT = '/api/proxy';
 // ============================================
 
 let allData = [];
-let currentFilter = 'recent'; // 'recent' or 'all'
+let currentFilter = 'all'; // Changed from 'recent' to show all messages by default
 
 // DOM Elements
 const content = document.getElementById('content');
@@ -52,10 +52,25 @@ async function loadData() {
         const json = await response.json();
         console.log('Received data:', Array.isArray(json) ? `${json.length} records` : typeof json);
 
+        // Debug: log the response structure
+        if (!Array.isArray(json)) {
+            console.log('Response structure:', Object.keys(json));
+        }
+
         // Handle different response formats
         allData = parseResponseData(json);
 
         console.log('Processed records:', allData.length);
+
+        // Debug: show date range of data
+        if (allData.length > 0) {
+            const dates = allData.map(r => new Date(r['CREATED DATE'])).filter(d => !isNaN(d));
+            if (dates.length > 0) {
+                const oldest = new Date(Math.min(...dates));
+                const newest = new Date(Math.max(...dates));
+                console.log(`Date range: ${oldest.toLocaleDateString()} to ${newest.toLocaleDateString()}`);
+            }
+        }
 
         if (allData.length === 0) {
             countElem.textContent = 'No conversations found';
