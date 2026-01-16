@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rūmie Conversations</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #1a1a1a; color: #e0e0e0; height: 100vh; overflow: hidden; }
+        .container { display: flex; height: 100vh; }
+        .sidebar { width: 350px; background: #252525; border-right: 1px solid #444; overflow-y: auto; padding: 20px; }
+        .sidebar-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+        h1 { color: #a855f7; font-size: 32px; }
+        .refresh-btn { background: #a855f7; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 600; transition: all 0.2s; }
+        .refresh-btn:hover { background: #9333ea; transform: translateY(-1px); }
+        .refresh-btn:active { transform: translateY(0); }
+        .refresh-btn:disabled { background: #666; cursor: not-allowed; }
+        .subtitle { color: #999; font-size: 14px; margin-bottom: 20px; }
+        .conv { background: #333; padding: 15px; margin: 10px 0; border-radius: 8px; cursor: pointer; border: 2px solid transparent; transition: all 0.2s; }
+        .conv:hover { background: #3a3a3a; border-color: #a855f7; }
+        .conv.active { background: #3a3a3a; border-color: #a855f7; }
+        .conv-name { font-weight: 600; color: #fff; margin-bottom: 5px; font-size: 15px; }
+        .conv-preview { font-size: 13px; color: #aaa; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .conv-meta { display: flex; justify-content: space-between; margin-top: 8px; font-size: 11px; color: #777; }
+        .main { flex: 1; display: flex; flex-direction: column; background: #1a1a1a; }
+        .chat-header { background: #252525; padding: 20px 30px; border-bottom: 1px solid #444; display: flex; justify-content: space-between; align-items: center; }
+        .chat-header-left { flex: 1; }
+        .chat-name { font-size: 24px; font-weight: 600; color: #fff; }
+        .chat-id { font-size: 12px; color: #888; margin-top: 5px; }
+        .share-btn { background: #10b981; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 600; transition: all 0.2s; display: flex; align-items: center; gap: 8px; }
+        .share-btn:hover { background: #059669; transform: translateY(-1px); }
+        .share-btn:active { transform: translateY(0); }
+        .messages { flex: 1; overflow-y: auto; padding: 30px; }
+        .filter-bar { background: #2a2a2a; padding: 15px 30px; border-bottom: 1px solid #444; display: flex; gap: 10px; align-items: center; }
+        .filter-label { color: #999; font-size: 14px; margin-right: 10px; }
+        .filter-btn { background: #333; color: #aaa; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 13px; transition: all 0.2s; }
+        .filter-btn.active { background: #a855f7; color: white; }
+        .filter-btn:hover:not(.active) { background: #3a3a3a; }
+        .msg-group { margin-bottom: 25px; position: relative; }
+        .user-msg { display: flex; justify-content: flex-end; margin-bottom: 12px; padding-left: 20px; }
+        .user-bubble { background: linear-gradient(135deg, #a855f7, #ec4899); color: #fff; padding: 12px 16px; border-radius: 16px 16px 4px 16px; max-width: 100%; word-wrap: break-word; line-height: 1.4; }
+        .bot-msg { display: flex; justify-content: flex-start; padding-right: 20px; }
+        .bot-bubble { background: #252525; color: #e0e0e0; padding: 12px 16px; border-radius: 16px 16px 16px 4px; max-width: 100%; border: 1px solid #444; word-wrap: break-word; line-height: 1.5; }
+        .bot-bubble a { color: #a855f7; }
+        .bot-bubble b, .bot-bubble strong { color: #fff; font-weight: 600; }
+        .bot-bubble ul, .bot-bubble ol { margin: 8px 0; padding-left: 20px; }
+        .bot-bubble li { margin: 4px 0; }
+        .bot-bubble p { margin: 8px 0; }
+        .bot-bubble p:first-child { margin-top: 0; }
+        .bot-bubble p:last-child { margin-bottom: 0; }
+        .msg-time { font-size: 10px; color: rgba(255,255,255,0.4); margin-top: 6px; }
+        .share-msg-btn { background: none; border: none; color: #a855f7; font-size: 11px; cursor: pointer; padding: 4px 8px; margin-top: 6px; display: inline-flex; align-items: center; gap: 4px; border-radius: 4px; transition: all 0.2s; }
+        .share-msg-btn:hover { background: rgba(168, 85, 247, 0.2); }
+        .category { display: inline-block; padding: 4px 10px; border-radius: 12px; font-size: 10px; margin-top: 8px; background: rgba(168, 85, 247, 0.2); color: #a855f7; font-weight: 500; }
+        .empty { display: flex; align-items: center; justify-content: center; height: 100%; flex-direction: column; color: #666; font-size: 16px; }
+        .empty-icon { font-size: 64px; margin-bottom: 16px; }
+        .toast { position: fixed; top: 20px; right: 20px; background: #10b981; color: white; padding: 12px 24px; border-radius: 8px; font-size: 14px; font-weight: 600; box-shadow: 0 4px 12px rgba(0,0,0,0.3); z-index: 1000; animation: slideIn 0.3s ease-out; }
+        .toast.error { background: #ef4444; }
+        .setup-notice { background: #fbbf24; color: #78350f; padding: 12px; margin-bottom: 20px; border-radius: 6px; font-size: 13px; line-height: 1.5; }
+        .setup-notice b { color: #451a03; display: block; margin-bottom: 4px; }
+        @keyframes slideIn { from { transform: translateX(400px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+        @keyframes highlight { 
+            0% { background: rgba(168, 85, 247, 0.3); }
+            100% { background: transparent; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <h1>Rūmie</h1>
+                <button class="refresh-btn" onclick="refreshData()">🔄 Refresh</button>
+            </div>
+            <div class="subtitle">Latest Chatbot Conversations</div>
+            <div class="subtitle" id="count">Loading...</div>
+            <div id="convs"></div>
+        </div>
+        <div class="main">
+            <div id="content" class="empty">
+                <div class="empty-icon">💬</div>
+                <div>Select a conversation to view messages</div>
+            </div>
+        </div>
+    </div>
+    <script>
+        // n8n webhook URL - fetches data from Airtable (PRODUCTION URL)
+        const N8N_WEBHOOK_URL = 'https://rumurumurumu.app.n8n.cloud/webhook/8ef6128e-fc03-49ac-8b22-eb8a722157b0';
+        
+        // Use CORS proxy to bypass CORS restrictions since n8n doesn't handle OPTIONS requests
+        const CORS_PROXY = 'https://corsproxy.io/?';
+        const PROXIED_URL = CORS_PROXY + encodeURIComponent(N8N_WEBHOOK_URL);
+        
+        let allData = [];
+        let currentFilter = 'recent'; // 'recent' or 'all'
+        const content = document.getElementById('content');
+        const convsCont = document.getElementById('convs');
+        const countElem = document.getElementById('count');
+        
+        // Check for shared conversation in URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const sharedChatId = urlParams.get('chat');
+        
+        async function loadData() {
+            try {
+                console.log('Attempting to fetch from:', N8N_WEBHOOK_URL);
+                console.log('Using CORS proxy:', PROXIED_URL);
+                countElem.textContent = 'Fetching data...';
+                
+                // Use GET request through CORS proxy
+                const response = await fetch(PROXIED_URL, {
+                    method: 'GET'
+                });
+                
+                console.log('Response received:', response);
+                console.log('Response status:', response.status);
+                console.log('Response ok?', response.ok);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const contentType = response.headers.get('content-type');
+                console.log('Content-Type:', contentType);
+                
+                const text = await response.text();
+                console.log('Raw response text:', text);
+                console.log('Response length:', text.length);
+                
+                let json;
+                try {
+                    json = JSON.parse(text);
+                } catch (parseError) {
+                    console.error('JSON parse error:', parseError);
+                    throw new Error('Response is not valid JSON: ' + text.substring(0, 100));
+                }
+                
+                console.log('Parsed JSON:', json);
+                console.log('Response type:', typeof json);
+                console.log('Is array?', Array.isArray(json));
+                if (typeof json === 'object' && json !== null) {
+                    console.log('Response keys:', Object.keys(json));
+                }
+                
+                // Handle different n8n response formats
+                if (Array.isArray(json)) {
+                    // Direct array
+                    allData = json;
+                } else if (json.data) {
+                    // n8n wrapped response - could be single object or array
+                    if (Array.isArray(json.data)) {
+                        // { data: [...] } - array of records
+                        allData = json.data;
+                    } else if (typeof json.data === 'object') {
+                        // { data: {...} } - single record, wrap it
+                        console.log('Single record detected, wrapping in array');
+                        allData = [json.data];
+                    }
+                } else if (json.records && Array.isArray(json.records)) {
+                    // { records: [...] }
+                    allData = json.records;
+                } else if (json.body && Array.isArray(json.body)) {
+                    // { body: [...] }
+                    allData = json.body;
+                } else if (json.items && Array.isArray(json.items)) {
+                    // { items: [...] }
+                    allData = json.items;
+                } else if (typeof json === 'object' && json !== null) {
+                    // Try to find the first array property
+                    const arrayProp = Object.values(json).find(v => Array.isArray(v));
+                    if (arrayProp) {
+                        console.log('Found array in property:', Object.keys(json).find(k => json[k] === arrayProp));
+                        allData = arrayProp;
+                    } else {
+                        // Single object or unknown format
+                        console.warn('Could not find array in response, wrapping single object');
+                        allData = [json];
+                    }
+                } else {
+                    // Fallback
+                    allData = [json];
+                }
+                
+                console.log('Processed data length:', allData.length);
+                console.log('Sample record:', allData[0]);
+                
+                if (allData.length === 0) {
+                    countElem.textContent = 'No conversations found';
+                    showToast('No data received from webhook', true);
+                    return;
+                }
+                
+                renderConversations();
+                
+                // If there's a shared chat ID, open it
+                if (sharedChatId) {
+                    openSharedChat(sharedChatId);
+                }
+            } catch (error) {
+                console.error('Full error object:', error);
+                console.error('Error type:', error.constructor.name);
+                console.error('Error message:', error.message);
+                console.error('Error stack:', error.stack);
+                showToast('Error loading data: ' + error.message, true);
+                countElem.textContent = 'Error: ' + error.message;
+            }
+        }
+        
+        async function refreshData() {
+            const btn = event.target;
+            btn.disabled = true;
+            btn.textContent = '⏳ Loading...';
+            
+            try {
+                await loadData();
+                showToast('Data refreshed successfully! ✓');
+            } catch (error) {
+                showToast('Failed to refresh data', true);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '🔄 Refresh';
+            }
+        }
+        
+        function renderConversations() {
+            // Group by CHAT ID - data is already at top level, no .fields needed
+            const chats = {};
+            allData.forEach(rec => {
+                const chatId = rec['CHAT ID'];
+                if (!chatId) return;
+                if (!chats[chatId]) chats[chatId] = [];
+                chats[chatId].push(rec);
+            });
+            
+            // Sort each chat's messages by date (newest first)
+            Object.keys(chats).forEach(chatId => {
+                chats[chatId].sort((a, b) => 
+                    new Date(b['CREATED DATE']) - new Date(a['CREATED DATE'])
+                );
+            });
+            
+            // Sort chats by most recent message
+            const sortedChats = Object.entries(chats).sort((a, b) => 
+                new Date(b[1][0]['CREATED DATE']) - new Date(a[1][0]['CREATED DATE'])
+            );
+            
+            countElem.textContent = `${sortedChats.length} conversations • ${allData.length} total messages`;
+            convsCont.innerHTML = '';
+            
+            sortedChats.forEach(([chatId, messages]) => {
+                const latest = messages[0];
+                
+                const div = document.createElement('div');
+                div.className = 'conv';
+                div.innerHTML = `
+                    <div class="conv-name">${latest['F Name'] || 'Unknown User'}</div>
+                    <div class="conv-preview">${(latest['USER MESSAGE'] || '').substring(0, 60)}...</div>
+                    <div class="conv-meta">
+                        <span>${new Date(latest['CREATED DATE']).toLocaleDateString('en-GB')}</span>
+                        <span>${messages.length} msgs</span>
+                    </div>
+                `;
+                
+                div.onclick = () => {
+                    document.querySelectorAll('.conv').forEach(el => el.classList.remove('active'));
+                    div.classList.add('active');
+                    showChat(chatId, messages);
+                };
+                
+                convsCont.appendChild(div);
+            });
+        }
+        
+        function openSharedChat(chatId) {
+            const chats = {};
+            allData.forEach(rec => {
+                const id = rec['CHAT ID'];
+                if (!id) return;
+                if (!chats[id]) chats[id] = [];
+                chats[id].push(rec);
+            });
+            
+            if (chats[chatId]) {
+                chats[chatId].sort((a, b) => 
+                    new Date(b['CREATED DATE']) - new Date(a['CREATED DATE'])
+                );
+                showChat(chatId, chats[chatId]);
+                
+                // Highlight the conversation in sidebar
+                const convDivs = document.querySelectorAll('.conv');
+                convDivs.forEach(div => {
+                    if (div.onclick.toString().includes(chatId)) {
+                        div.classList.add('active');
+                        div.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }
+                });
+            }
+        }
+        
+        function showChat(chatId, msgs) {
+            const userName = msgs[0]['F Name'] || 'Unknown User';
+            const username = msgs[0]['USERNAME'] || '';
+            
+            // Filter messages based on current filter
+            let filteredMsgs = msgs;
+            if (currentFilter === 'recent') {
+                const oneWeekAgo = new Date();
+                oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+                filteredMsgs = msgs.filter(msg => new Date(msg['CREATED DATE']) >= oneWeekAgo);
+            }
+            
+            const sorted = [...filteredMsgs].reverse(); // Oldest to newest for display
+            
+            content.innerHTML = `
+                <div class="chat-header">
+                    <div class="chat-header-left">
+                        <div class="chat-name">${userName}${username ? ` (@${username})` : ''}</div>
+                        <div class="chat-id">Chat ID: ${chatId} • ${filteredMsgs.length} messages</div>
+                    </div>
+                    <button class="share-btn" onclick="shareConversation('${chatId}')">
+                        🔗 Share Conversation
+                    </button>
+                </div>
+                <div class="filter-bar">
+                    <span class="filter-label">Show:</span>
+                    <button class="filter-btn ${currentFilter === 'recent' ? 'active' : ''}" onclick="setFilter('recent', '${chatId}', ${JSON.stringify(msgs).replace(/"/g, '&quot;')})">
+                        Recent (Last 7 days)
+                    </button>
+                    <button class="filter-btn ${currentFilter === 'all' ? 'active' : ''}" onclick="setFilter('all', '${chatId}', ${JSON.stringify(msgs).replace(/"/g, '&quot;')})">
+                        All Time
+                    </button>
+                </div>
+                <div class="messages">
+                    ${sorted.map((msg, idx) => `
+                        <div class="msg-group" id="msg-${msg['R-ID']}">
+                            <div class="user-msg">
+                                <div class="user-bubble">
+                                    ${escapeHtml(msg['USER MESSAGE'] || '')}
+                                    <div class="msg-time">${new Date(msg['CREATED DATE']).toLocaleString('en-GB')}</div>
+                                </div>
+                            </div>
+                            <div class="bot-msg">
+                                <div class="bot-bubble">
+                                    ${formatHtmlMessage(msg['RUMIE MESSAGE'] || '')}
+                                    ${msg.Category ? `<div class="category">${msg.Category}</div>` : ''}
+                                    <div class="msg-time">R-ID: ${msg['R-ID']}</div>
+                                    <button class="share-msg-btn" onclick="shareMessage('${chatId}', '${msg['R-ID']}')">
+                                        🔗 Share this message
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+            
+            // Check if there's a message hash in the URL and scroll to it
+            const urlParams = new URLSearchParams(window.location.search);
+            const msgId = urlParams.get('msg');
+            if (msgId) {
+                setTimeout(() => {
+                    const msgElement = document.getElementById(`msg-${msgId}`);
+                    if (msgElement) {
+                        msgElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        msgElement.style.animation = 'highlight 2s ease-out';
+                    }
+                }, 100);
+            }
+        }
+        
+        function formatHtmlMessage(html) {
+            if (!html) return '';
+            
+            // Remove the HTML tags that Telegram uses but preserve the structure
+            let formatted = html
+                // Convert <br> tags to actual line breaks
+                .replace(/<br\s*\/?>/gi, '\n')
+                // Convert </p> to double line breaks
+                .replace(/<\/p>/gi, '\n\n')
+                // Remove opening <p> tags
+                .replace(/<p>/gi, '')
+                // Preserve bold tags
+                .replace(/<b>/gi, '<b>')
+                .replace(/<\/b>/gi, '</b>')
+                .replace(/<strong>/gi, '<strong>')
+                .replace(/<\/strong>/gi, '</strong>')
+                // Preserve links
+                .replace(/<a\s+href="([^"]+)">([^<]+)<\/a>/gi, '<a href="$1" target="_blank">$2</a>')
+                // Remove any remaining HTML tags except b, strong, a, ul, ol, li
+                .replace(/<(?!\/?(?:b|strong|a|ul|ol|li|p)\b)[^>]+>/gi, '')
+                // Convert line breaks to <br> for HTML display
+                .split('\n')
+                .map(line => line.trim())
+                .filter(line => line.length > 0)
+                .join('<br>');
+            
+            return formatted;
+        }
+        
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+        
+        function shareConversation(chatId) {
+            const baseUrl = window.location.href.split('?')[0];
+            const shareUrl = `${baseUrl}?chat=${encodeURIComponent(chatId)}`;
+            
+            // Copy to clipboard
+            navigator.clipboard.writeText(shareUrl).then(() => {
+                showToast('Link copied to clipboard! ✓');
+            }).catch(() => {
+                // Fallback if clipboard API fails
+                const textArea = document.createElement('textarea');
+                textArea.value = shareUrl;
+                textArea.style.position = 'fixed';
+                textArea.style.opacity = '0';
+                document.body.appendChild(textArea);
+                textArea.select();
+                try {
+                    document.execCommand('copy');
+                    showToast('Link copied to clipboard! ✓');
+                } catch (err) {
+                    showToast('Could not copy link', true);
+                }
+                document.body.removeChild(textArea);
+            });
+        }
+        
+        function shareMessage(chatId, msgId) {
+            const baseUrl = window.location.href.split('?')[0];
+            const shareUrl = `${baseUrl}?chat=${encodeURIComponent(chatId)}&msg=${encodeURIComponent(msgId)}`;
+            
+            // Copy to clipboard
+            navigator.clipboard.writeText(shareUrl).then(() => {
+                showToast('Message link copied! ✓');
+            }).catch(() => {
+                // Fallback
+                const textArea = document.createElement('textarea');
+                textArea.value = shareUrl;
+                textArea.style.position = 'fixed';
+                textArea.style.opacity = '0';
+                document.body.appendChild(textArea);
+                textArea.select();
+                try {
+                    document.execCommand('copy');
+                    showToast('Message link copied! ✓');
+                } catch (err) {
+                    showToast('Could not copy link', true);
+                }
+                document.body.removeChild(textArea);
+            });
+        }
+        
+        function setFilter(filter, chatId, msgs) {
+            currentFilter = filter;
+            showChat(chatId, msgs);
+        }
+        
+        function showToast(message, isError = false) {
+            const toast = document.createElement('div');
+            toast.className = 'toast' + (isError ? ' error' : '');
+            toast.textContent = message;
+            document.body.appendChild(toast);
+            
+            setTimeout(() => {
+                toast.style.animation = 'slideIn 0.3s ease-out reverse';
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+        
+        // Load data on page load
+        loadData();
+    </script>
+</body>
+</html>

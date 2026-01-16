@@ -1,0 +1,17 @@
+{
+    "name": "rumie-reader",
+    "version": "1.0.0",
+    "description": "Rūmie Conversations Viewer - Telegram chatbot conversation viewer",
+    "scripts": {
+        "dev": "npx serve public -l 3000",
+        "build": "echo 'Static site - no build required'"
+    },
+    "keywords": [
+        "chatbot",
+        "telegram",
+        "airtable",
+        "n8n"
+    ],
+    "author": "Peter",
+    "license": "MIT"
+}
